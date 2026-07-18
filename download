@@ -1,0 +1,6 @@
+config.php
+dataset/
+trained_model.yml
+labels.txt
+__pycache__/
+*.pyc

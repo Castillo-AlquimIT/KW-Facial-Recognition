@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Face Register — KIFFY WORPSHIPPER</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="auth-page">
+
+  <div class="auth-topbar">
+    <div class="auth-crest">KW</div>
+    <span class="auth-topbar-wordmark">KIFFY WORPSHIPPER</span>
+  </div>
+
+  <div class="auth-card-split">
+    <h1 class="auth-login-heading">Face Registration</h1>
+    <p class="auth-login-subheading">Register or verify identity by camera</p>
+
+    <div class="auth-tabs" role="tablist" aria-label="Face mode">
+      <button type="button" id="tabRegister" class="auth-tab-btn active" onclick="switchTab('register')">Register</button>
+      <button type="button" id="tabRecognize" class="auth-tab-btn" onclick="switchTab('recognize')">Recognize</button>
+    </div>
+
+    <div class="auth-camera-wrap">
+      <video id="video" autoplay muted playsinline></video>
+      <div class="auth-scan-line"></div>
+    </div>
+    <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+
+    <form class="auth-form" onsubmit="return false;">
+
+      <div id="nameFields" class="auth-form--grid">
+        <label class="auth-field-label auth-span-3" style="display:none;"></label>
+
+        <label class="auth-field-label">
+          Prefix
+          <select id="prefix" class="auth-input">
+            <option value="">--</option>
+            <option value="Mr.">Mr.</option>
+            <option value="Ms.">Ms.</option>
+            <option value="Mrs.">Mrs.</option>
+            <option value="Dr.">Dr.</option>
+          </select>
+        </label>
+
+        <label class="auth-field-label">
+          First Name
+          <input type="text" id="firstName" class="auth-input" placeholder="First name">
+        </label>
+
+        <label class="auth-field-label">
+          Last Name
+          <input type="text" id="lastName" class="auth-input" placeholder="Last name">
+        </label>
+
+        <label class="auth-field-label auth-span-3">
+          Middle Name
+          <input type="text" id="middleName" class="auth-input" placeholder="Middle name (optional)">
+        </label>
+      </div>
+
+      <div class="auth-btn-row">
+        <button type="button" class="auth-primary-btn" id="btnRegister" onclick="capture('register')">Register Face</button>
+        <button type="button" class="auth-secondary-btn" id="btnRecognize" onclick="capture('recognize')" style="display:none;">Recognize Face</button>
+      </div>
+
+      <p id="result" class="auth-neutral-box">Waiting for camera…</p>
+    </form>
+
+    <div class="auth-back-link-row">
+      Already registered?
+      <button type="button" class="auth-back-link" onclick="switchTab('recognize')">Verify identity instead</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const video = document.getElementById('video');
+const resultEl = document.getElementById('result');
+const btnRegister = document.getElementById('btnRegister');
+const btnRecognize = document.getElementById('btnRecognize');
+const tabRegister = document.getElementById('tabRegister');
+const tabRecognize = document.getElementById('tabRecognize');
+const nameFields = document.getElementById('nameFields');
+let currentMode = 'register';
+
+function switchTab(mode) {
+  currentMode = mode;
+  const isRegister = mode === 'register';
+
+  tabRegister.classList.toggle('active', isRegister);
+  tabRecognize.classList.toggle('active', !isRegister);
+
+  btnRegister.style.display = isRegister ? 'block' : 'none';
+  btnRecognize.style.display = isRegister ? 'none' : 'block';
+  nameFields.style.display = isRegister ? 'grid' : 'none';
+
+  setStatus(isRegister ? 'Ready to register a new face.' : 'Ready to verify identity.', 'neutral');
+}
+
+function setStatus(text, type) {
+  resultEl.textContent = text;
+  resultEl.className = type === 'error' ? 'auth-error-box'
+    : type === 'success' ? 'auth-ok-box'
+    : 'auth-neutral-box';
+}
+
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(stream => {
+    video.srcObject = stream;
+    setStatus('Camera ready.', 'neutral');
+  })
+  .catch(err => {
+    setStatus('Camera error: ' + err.message, 'error');
+  });
+
+function setButtonsDisabled(disabled) {
+  btnRegister.disabled = disabled;
+  btnRecognize.disabled = disabled;
+}
+
+function getFullName() {
+  const prefix = document.getElementById('prefix').value.trim();
+  const first = document.getElementById('firstName').value.trim();
+  const middle = document.getElementById('middleName').value.trim();
+  const last = document.getElementById('lastName').value.trim();
+  return [prefix, first, middle, last].filter(Boolean).join(' ');
+}
+
+function capture(mode) {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, 320, 240);
+  const imageData = canvas.toDataURL('image/jpeg');
+  const name = getFullName();
+
+  if (mode === 'register' && !name) {
+    setStatus('Please enter at least a first and last name.', 'error');
+    return;
+  }
+
+  setStatus('Processing…', 'neutral');
+  setButtonsDisabled(true);
+
+  fetch(mode === 'register' ? 'register.php' : 'recognize.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: imageData, name: name })
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success && mode === 'recognize') {
+        const conf = (typeof data.confidence === 'number') ? data.confidence.toFixed(1) : 'N/A';
+        setStatus(`Recognized: ${data.name} (confidence ${conf}). Redirecting…`, 'success');
+        setTimeout(() => {
+          window.location.href = 'dashboard.php?name=' + encodeURIComponent(data.name);
+        }, 900);
+      } else if (data.success) {
+        setStatus(data.message || 'Success.', 'success');
+      } else if (data.message) {
+        setStatus(data.message, 'error');
+      } else {
+        setStatus('Unknown response from server.', 'error');
+      }
+    })
+    .catch(err => {
+      setStatus('Request failed: ' + err.message, 'error');
+    })
+    .finally(() => setButtonsDisabled(false));
+}
+</script>
+</body>
+</html>

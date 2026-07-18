@@ -1,0 +1,13 @@
+<?php
+// Copy this file to config.php and fill in your own values.
+// config.php is gitignored / should never be shared publicly if you
+// change the password from the default.
+
+return [
+    "db_host"     => "127.0.0.1",
+    "db_port"     => 3306,
+    "db_user"     => "root",
+    "db_password" => "",
+    "db_name"     => "face_db",
+    "face_api_url" => "http://localhost:5000",
+];
