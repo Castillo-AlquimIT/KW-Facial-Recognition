@@ -36,14 +36,39 @@ if ($result) {
 }
 $stmt->close();
 
-// --- This user's recent attendance history ---
+// --- Pagination setup ---
+$perPage = 10;
+$page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+$offset = ($page - 1) * $perPage;
+
+// --- This user's total attendance record count (for pagination) ---
+$totalRecords = $myCount; // already counted above
+
+$totalPages = max(1, (int) ceil($totalRecords / $perPage));
+if ($page > $totalPages) {
+    $page = $totalPages;
+    $offset = ($page - 1) * $perPage;
+}
+
+// --- This user's attendance history (current page) ---
 $history = [];
-$stmt = $con->prepare("SELECT timestamp FROM attendance WHERE name = ? ORDER BY timestamp DESC LIMIT 10");
-$stmt->bind_param("s", $name);
+$stmt = $con->prepare("SELECT timestamp FROM attendance WHERE name = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?");
+$stmt->bind_param("sii", $name, $perPage, $offset);
 $stmt->execute();
 $result = $stmt->get_result();
 while ($row = $result->fetch_assoc()) {
     $history[] = $row['timestamp'];
+}
+$stmt->close();
+
+// --- Latest single check-in (always page 1, most recent overall) ---
+$latest = null;
+$stmt = $con->prepare("SELECT timestamp FROM attendance WHERE name = ? ORDER BY timestamp DESC LIMIT 1");
+$stmt->bind_param("s", $name);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($row = $result->fetch_assoc()) {
+    $latest = $row['timestamp'];
 }
 $stmt->close();
 
@@ -79,6 +104,13 @@ $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
       <p>Here's your recognition and attendance summary.</p>
     </div>
 
+    <?php if ($latest !== null): ?>
+      <div class="dash-latest-banner">
+        <span class="dash-latest-label">Latest Check-in</span>
+        <span class="dash-latest-value"><?php echo htmlspecialchars($latest, ENT_QUOTES, 'UTF-8'); ?></span>
+      </div>
+    <?php endif; ?>
+
     <div class="dash-stats-row">
       <div class="dash-stat-card">
         <div class="dash-stat-label">Registered Users</div>
@@ -109,14 +141,36 @@ $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
           </thead>
           <tbody>
             <?php foreach ($history as $i => $ts): ?>
-              <tr>
-                <td><?php echo $i + 1; ?></td>
+              <tr class="<?php echo ($ts === $latest) ? 'dash-row-latest' : ''; ?>">
+                <td><?php echo $offset + $i + 1; ?></td>
                 <td><?php echo htmlspecialchars($ts, ENT_QUOTES, 'UTF-8'); ?></td>
-                <td><span class="dash-badge">Verified</span></td>
+                <td>
+                  <span class="dash-badge">Verified</span>
+                  <?php if ($ts === $latest): ?>
+                    <span class="dash-badge dash-badge-latest">Latest</span>
+                  <?php endif; ?>
+                </td>
               </tr>
             <?php endforeach; ?>
           </tbody>
         </table>
+
+        <?php if ($totalPages > 1): ?>
+          <div class="dash-pagination">
+            <?php if ($page > 1): ?>
+              <a class="dash-page-link" href="?name=<?php echo urlencode($name); ?>&page=<?php echo $page - 1; ?>">&laquo; Prev</a>
+            <?php endif; ?>
+
+            <?php for ($p = 1; $p <= $totalPages; $p++): ?>
+              <a class="dash-page-link<?php echo ($p === $page) ? ' active' : ''; ?>"
+                 href="?name=<?php echo urlencode($name); ?>&page=<?php echo $p; ?>"><?php echo $p; ?></a>
+            <?php endfor; ?>
+
+            <?php if ($page < $totalPages): ?>
+              <a class="dash-page-link" href="?name=<?php echo urlencode($name); ?>&page=<?php echo $page + 1; ?>">Next &raquo;</a>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
       <?php endif; ?>
     </div>
 

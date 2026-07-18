@@ -185,3 +185,72 @@
   font-size: 0.72rem;
   font-weight: 600;
 }
+
+/* ─── Latest check-in banner ──────────────────────────────────────────── */
+
+.dash-latest-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #8d3131, #b04747);
+  color: #fff;
+  border-radius: 8px;
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 14px rgba(141, 49, 49, 0.3);
+}
+
+.dash-latest-label {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+}
+
+.dash-latest-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* ─── Latest row highlight in table ───────────────────────────────────── */
+
+.dash-row-latest {
+  background: #fdf7ec;
+}
+
+.dash-badge-latest {
+  margin-left: 6px;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* ─── Pagination ──────────────────────────────────────────────────────── */
+
+.dash-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 16px;
+  justify-content: center;
+}
+
+.dash-page-link {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #374151;
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+.dash-page-link:hover {
+  background: #f8fafc;
+}
+
+.dash-page-link.active {
+  background: #8d3131;
+  border-color: #8d3131;
+  color: #fff;
+}
